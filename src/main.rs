@@ -11,9 +11,6 @@ use std::time::{Duration, SystemTime};
 const W: usize = 1600;
 const H: usize = 800;
 
-// const SAMPLE_RATE: f64 = 200.0;
-// const FREAME_RATE: f64 = 30.0;
-
 const DATA_LENGTH: usize = 1000;
 
 struct BufferWrapper(Vec<u32>);
@@ -43,38 +40,9 @@ impl BorrowMut<[u32]> for BufferWrapper {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut buf = BufferWrapper(vec![0u32; W * H]);
-
-    let mut window = Window::new(
-        // &get_window_title(fx, fy, yphase - xphase),
-        "Pressure Data         s=Save    <Esc>=Exit",
-        W,
-        H,
-        WindowOptions::default(),
-    )?;
-    let root =
-        BitMapBackend::<BGRXPixel>::with_buffer_and_format(buf.borrow_mut(), (W as u32, H as u32))?
-            .into_drawing_area();
-    root.fill(&BLACK)?;
-
-    let mut chart = ChartBuilder::on(&root)
-        .margin(10)
-        .set_all_label_area_size(50)
-        .build_cartesian_2d(0.0..120.0, -50_000.0..2_500.0)?;
-
-    chart
-        .configure_mesh()
-        .label_style(("sans-serif", 15).into_font().color(&GREEN))
-        .axis_style(&GREEN)
-        .draw()?;
-
-    let cs = chart.into_chart_state();
-    drop(root);
-
-    let mut data: Vec<(SystemTime, f64)> = Vec::new();
-
     let mut mqttoptions = MqttOptions::new("pressure_data_receiver", "raspberrypi.local", 1883);
     mqttoptions.set_keep_alive(Duration::from_secs(5));
+    mqttoptions.set_clean_session(true);
 
     let (mut client, mut connection) = Client::new(mqttoptions, 10);
     client
@@ -107,11 +75,39 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
+    let mut buf = BufferWrapper(vec![0u32; W * H]);
+
+    let mut window = Window::new(
+        "Pressure Data         s=Save    <Esc>=Exit",
+        W,
+        H,
+        WindowOptions::default(),
+    )?;
+    let root =
+        BitMapBackend::<BGRXPixel>::with_buffer_and_format(buf.borrow_mut(), (W as u32, H as u32))?
+            .into_drawing_area();
+    root.fill(&BLACK)?;
+
+    let mut chart = ChartBuilder::on(&root)
+        .margin(10)
+        .set_all_label_area_size(50)
+        .build_cartesian_2d(0.0..120.0, -50_000.0..2_500.0)?;
+
+    chart
+        .configure_mesh()
+        .label_style(("sans-serif", 15).into_font().color(&GREEN))
+        .axis_style(&GREEN)
+        .draw()?;
+
+    let cs = chart.into_chart_state();
+    drop(root);
+
+    let mut data: Vec<(SystemTime, f64)> = Vec::new();
+
     let mut start_ts = SystemTime::now();
-    // let mut last_flushed = 0.0;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        if let Ok(pressure) = rx.recv() {
+        if let Ok(pressure) = rx.try_recv() {
             // debug:
             println!("Pressure: {}", pressure);
 
@@ -181,9 +177,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
             }
-
-            window.update_with_buffer(buf.borrow(), W, H)?;
         }
+        window.update_with_buffer(buf.borrow(), W, H)?;
+
+        thread::sleep(Duration::from_millis(15));
     }
     Ok(())
 }
