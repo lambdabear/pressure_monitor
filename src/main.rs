@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         let bytes = publish.payload;
                         if bytes.len() == 4 {
                             let pressure =
-                                f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as f64;
+                                i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as f64;
                             tx.send(pressure).ok();
                         }
                     }
