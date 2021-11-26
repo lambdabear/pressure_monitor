@@ -91,7 +91,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut chart = ChartBuilder::on(&root)
         .margin(10)
         .set_all_label_area_size(50)
-        .build_cartesian_2d(0.0..120.0, -50_000.0..2_500.0)?;
+        .build_cartesian_2d(0.0..120.0, -80_000.0..2_500.0)?;
 
     chart
         .configure_mesh()
