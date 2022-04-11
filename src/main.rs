@@ -1,3 +1,4 @@
+use clap::Parser;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use plotters::prelude::*;
 use plotters_bitmap::bitmap_pixel::BGRXPixel;
@@ -8,10 +9,21 @@ use std::error::Error;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, SystemTime};
+
 const W: usize = 1600;
 const H: usize = 800;
 
 const DATA_LENGTH: usize = 1000;
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    #[clap(short, long, default_value = "raspberrypi.local")]
+    addr: String,
+
+    #[clap(short, long, default_value_t = 1883)]
+    port: u16,
+}
 
 struct BufferWrapper(Vec<u32>);
 impl Borrow<[u8]> for BufferWrapper {
@@ -40,7 +52,9 @@ impl BorrowMut<[u32]> for BufferWrapper {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut mqttoptions = MqttOptions::new("pressure_data_receiver", "raspberrypi.local", 1883);
+    let args = Args::parse();
+
+    let mut mqttoptions = MqttOptions::new("pressure_data_receiver", args.addr, args.port);
     mqttoptions.set_keep_alive(Duration::from_secs(5));
     mqttoptions.set_clean_session(true);
 
@@ -91,7 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut chart = ChartBuilder::on(&root)
         .margin(10)
         .set_all_label_area_size(50)
-        .build_cartesian_2d(0.0..120.0, -80_000.0..2_500.0)?;
+        .build_cartesian_2d(0.0..120.0, -100_000.0..2_500.0)?;
 
     chart
         .configure_mesh()
